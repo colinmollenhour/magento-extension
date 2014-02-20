@@ -128,6 +128,10 @@ class Hps_Securesubmit_Model_Payment extends Mage_Payment_Model_Method_Cc
                 $payment->getCcExpMonth(),
                 $payment->getCcCid());
         } else {
+            if ( ! $secureToken) {
+                Mage::log('Payment information submitted without token.', Zend_Log::ERR);
+                $this->throwUserError(Mage::helper('hps_securesubmit')->__('An unexpected error occurred. Please try resubmitting your payment information.'), NULL, TRUE);
+            }
             $cardOrToken = new HpsToken(
                 $secureToken,
                 null,
@@ -163,10 +167,17 @@ class Hps_Securesubmit_Model_Payment extends Mage_Payment_Model_Method_Cc
                     $multiToken);
             }
         }
-        catch (CardException $e) {
+        catch (CardException $e)
+        {
             $this->_debugChargeService($chargeService, $e);
             $payment->setStatus(self::STATUS_DECLINED);
             $this->throwUserError($e->getMessage(), $e->ResultText, TRUE);
+        }
+        catch (HpsException $e)
+        {
+            $this->_debugChargeService($chargeService, $e);
+            $payment->setStatus(self::STATUS_ERROR);
+            $this->throwUserError($e->getMessage(), NULL, TRUE);
         }
         catch (Exception $e)
         {
